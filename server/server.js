@@ -5,13 +5,32 @@ const cors = require("cors");
 
 const app = express();
 
-app.use(cors());
+// =====================================
+// CORS
+// =====================================
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://connectupvbit.onrender.com",
+    ],
+    methods: ["GET", "POST"],
+  })
+);
 
 const httpServer = http.createServer(app);
 
+// =====================================
+// SOCKET.IO
+// =====================================
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: [
+      "http://localhost:5173",
+      "https://connectupvbit.onrender.com",
+    ],
     methods: ["GET", "POST"],
   },
 });
@@ -43,7 +62,7 @@ function updateOnlineUsers() {
 }
 
 // =====================================
-// REMOVE FROM WAITING
+// REMOVE USER FROM WAITING
 // =====================================
 
 function removeFromWaiting(socketId) {
@@ -59,30 +78,25 @@ function removeFromWaiting(socketId) {
 // =====================================
 
 function findStranger(socket) {
+
   // Already connected
   if (partners.has(socket.id)) {
-    console.log(
-      `${socket.id} is already connected`
-    );
     return;
   }
 
   // Already waiting
   if (waitingUsers.includes(socket.id)) {
-    console.log(
-      `${socket.id} is already waiting`
-    );
     return;
   }
 
-  // Find available stranger
   while (waitingUsers.length > 0) {
+
     const strangerId = waitingUsers.shift();
 
     const stranger =
       io.sockets.sockets.get(strangerId);
 
-    // Stranger disconnected
+    // User no longer exists
     if (!stranger) {
       continue;
     }
@@ -92,15 +106,15 @@ function findStranger(socket) {
       continue;
     }
 
-    // =================================
-    // CREATE MATCH
-    // =================================
+    // Create match
+    partners.set(
+      socket.id,
+      stranger.id
+    );
 
-    partners.set(socket.id, stranger.id);
-    partners.set(stranger.id, socket.id);
-
-    console.log(
-      `Matched ${socket.id} <-> ${stranger.id}`
+    partners.set(
+      stranger.id,
+      socket.id
     );
 
     // Tell both users
@@ -108,13 +122,14 @@ function findStranger(socket) {
 
     stranger.emit("matched");
 
+    console.log(
+      `Matched ${socket.id} <-> ${stranger.id}`
+    );
+
     return;
   }
 
-  // =================================
-  // NO STRANGER
-  // =================================
-
+  // Nobody available
   waitingUsers.push(socket.id);
 
   socket.emit("waiting");
@@ -129,6 +144,7 @@ function findStranger(socket) {
 // =====================================
 
 io.on("connection", (socket) => {
+
   console.log(
     "User connected:",
     socket.id
@@ -140,13 +156,12 @@ io.on("connection", (socket) => {
   // FIND STRANGER
   // ===================================
 
-  socket.on("find_stranger", () => {
-    console.log(
-      `Find stranger request: ${socket.id}`
-    );
-
-    findStranger(socket);
-  });
+  socket.on(
+    "find_stranger",
+    () => {
+      findStranger(socket);
+    }
+  );
 
   // ===================================
   // SEND MESSAGE
@@ -155,18 +170,18 @@ io.on("connection", (socket) => {
   socket.on(
     "send_message",
     (message) => {
+
       const partnerId =
         partners.get(socket.id);
 
       if (!partnerId) {
-        console.log(
-          `No partner for ${socket.id}`
-        );
         return;
       }
 
       const partner =
-        io.sockets.sockets.get(partnerId);
+        io.sockets.sockets.get(
+          partnerId
+        );
 
       if (!partner) {
         return;
@@ -187,81 +202,90 @@ io.on("connection", (socket) => {
   // TYPING
   // ===================================
 
-  socket.on("typing", () => {
-    const partnerId =
-      partners.get(socket.id);
+  socket.on(
+    "typing",
+    () => {
 
-    if (!partnerId) {
-      return;
+      const partnerId =
+        partners.get(socket.id);
+
+      if (!partnerId) {
+        return;
+      }
+
+      io.to(partnerId).emit(
+        "stranger_typing"
+      );
     }
-
-    io.to(partnerId).emit(
-      "stranger_typing"
-    );
-  });
+  );
 
   // ===================================
   // STOP TYPING
   // ===================================
 
-  socket.on("stop_typing", () => {
-    const partnerId =
-      partners.get(socket.id);
+  socket.on(
+    "stop_typing",
+    () => {
 
-    if (!partnerId) {
-      return;
+      const partnerId =
+        partners.get(socket.id);
+
+      if (!partnerId) {
+        return;
+      }
+
+      io.to(partnerId).emit(
+        "stranger_stop_typing"
+      );
     }
-
-    io.to(partnerId).emit(
-      "stranger_stop_typing"
-    );
-  });
+  );
 
   // ===================================
-  // NEXT / SKIP
+  // SKIP CURRENT CHAT
   // ===================================
 
   socket.on(
     "next_stranger",
     () => {
-      console.log(
-        `Next requested by ${socket.id}`
-      );
 
       const partnerId =
         partners.get(socket.id);
 
-      // =================================
-      // USER HAS PARTNER
-      // =================================
+      // --------------------------------
+      // Current partner exists
+      // --------------------------------
 
       if (partnerId) {
-        // Remove old connection
-        partners.delete(socket.id);
-        partners.delete(partnerId);
+
+        // Remove match
+        partners.delete(
+          socket.id
+        );
+
+        partners.delete(
+          partnerId
+        );
+
+        // Tell other user
+        io.to(partnerId).emit(
+          "stranger_disconnected"
+        );
+
+        // Tell user who skipped
+        socket.emit(
+          "you_disconnected"
+        );
 
         console.log(
           `${socket.id} skipped ${partnerId}`
         );
 
-        // Tell stranger
-        io.to(partnerId).emit(
-          "stranger_disconnected"
-        );
-
-        // Tell current user
-        socket.emit(
-          "you_disconnected"
-        );
-
         return;
       }
 
-      // =================================
-      // USER HAS NO PARTNER
-      // =================================
-
-      removeFromWaiting(socket.id);
+      // --------------------------------
+      // Safety case
+      // --------------------------------
 
       socket.emit(
         "you_disconnected"
@@ -276,7 +300,10 @@ io.on("connection", (socket) => {
   socket.on(
     "stop_search",
     () => {
-      removeFromWaiting(socket.id);
+
+      removeFromWaiting(
+        socket.id
+      );
 
       console.log(
         `Search stopped: ${socket.id}`
@@ -291,22 +318,31 @@ io.on("connection", (socket) => {
   socket.on(
     "disconnect",
     () => {
+
       console.log(
         "User disconnected:",
         socket.id
       );
 
-      // Remove from waiting list
-      removeFromWaiting(socket.id);
+      // Remove from waiting
+      removeFromWaiting(
+        socket.id
+      );
 
-      // Find partner
+      // Check partner
       const partnerId =
         partners.get(socket.id);
 
       if (partnerId) {
+
         // Remove match
-        partners.delete(socket.id);
-        partners.delete(partnerId);
+        partners.delete(
+          socket.id
+        );
+
+        partners.delete(
+          partnerId
+        );
 
         // Tell partner
         io.to(partnerId).emit(
@@ -323,13 +359,15 @@ io.on("connection", (socket) => {
 // START SERVER
 // =====================================
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 httpServer.listen(
   PORT,
   () => {
+
     console.log(
-      `Server running on http://localhost:${PORT}`
+      `Server running on port ${PORT}`
     );
+
   }
 );
