@@ -4,13 +4,16 @@ import "./App.css";
 import vbitLogo from "./assets/vbit-logo.png";
 
 // =====================================
-// CONNECT TO LIVE RENDER SERVER
+// LIVE BACKEND
 // =====================================
 
-const socket = io("https://connectupvbit-server.onrender.com", {
-  autoConnect: true,
-  reconnection: true,
-});
+const socket = io(
+  "https://connectupvbit-server.onrender.com",
+  {
+    autoConnect: true,
+    reconnection: true,
+  }
+);
 
 // =====================================
 // APP
@@ -18,84 +21,148 @@ const socket = io("https://connectupvbit-server.onrender.com", {
 
 function App() {
   const [screen, setScreen] = useState("home");
+
   const [messages, setMessages] = useState([]);
+
   const [message, setMessage] = useState("");
+
   const [isTyping, setIsTyping] = useState(false);
+
   const [onlineUsers, setOnlineUsers] = useState(0);
+
   const [connected, setConnected] = useState(false);
+
   const [skipState, setSkipState] = useState("skip");
 
+  // =====================================
+  // INTERNET STATUS
+  // =====================================
+
+  const [isOnline, setIsOnline] = useState(
+    navigator.onLine
+  );
+
+  const [showBackOnline, setShowBackOnline] =
+    useState(false);
+
   const typingTimeout = useRef(null);
+
+  // =====================================
+  // INTERNET CONNECTION CHECK
+  // =====================================
+
+  useEffect(() => {
+    const handleOffline = () => {
+      console.log("Internet disconnected");
+
+      setIsOnline(false);
+      setShowBackOnline(false);
+    };
+
+    const handleOnline = () => {
+      console.log("Internet connected");
+
+      setIsOnline(true);
+      setShowBackOnline(true);
+
+      // Hide "Back online" after 3 seconds
+      setTimeout(() => {
+        setShowBackOnline(false);
+      }, 3000);
+
+      // Reconnect socket if needed
+      if (!socket.connected) {
+        socket.connect();
+      }
+    };
+
+    window.addEventListener(
+      "offline",
+      handleOffline
+    );
+
+    window.addEventListener(
+      "online",
+      handleOnline
+    );
+
+    return () => {
+      window.removeEventListener(
+        "offline",
+        handleOffline
+      );
+
+      window.removeEventListener(
+        "online",
+        handleOnline
+      );
+    };
+  }, []);
 
   // =====================================
   // SOCKET EVENTS
   // =====================================
 
   useEffect(() => {
-    // -----------------------------------
-    // CONNECT
-    // -----------------------------------
-
     const onConnect = () => {
-      console.log("Connected to server:", socket.id);
+      console.log(
+        "Connected to server:",
+        socket.id
+      );
     };
 
-    // -----------------------------------
-    // DISCONNECT
-    // -----------------------------------
-
     const onDisconnect = () => {
-      console.log("Disconnected from server");
+      console.log(
+        "Disconnected from server"
+      );
 
       setConnected(false);
       setIsTyping(false);
     };
-
-    // -----------------------------------
-    // ONLINE USERS
-    // -----------------------------------
 
     const onOnlineUsers = (count) => {
       setOnlineUsers(count);
     };
 
-    // -----------------------------------
-    // WAITING
-    // -----------------------------------
-
     const onWaiting = () => {
-      console.log("Waiting for stranger...");
+      console.log(
+        "Waiting for stranger..."
+      );
 
       setScreen("search");
+
       setConnected(false);
+
       setIsTyping(false);
+
       setSkipState("skip");
     };
-
-    // -----------------------------------
-    // MATCHED
-    // -----------------------------------
 
     const onMatched = () => {
-      console.log("Stranger matched!");
+      console.log(
+        "Stranger matched!"
+      );
 
       setScreen("chat");
+
       setConnected(true);
+
       setMessages([]);
+
       setMessage("");
+
       setIsTyping(false);
+
       setSkipState("skip");
     };
-
-    // -----------------------------------
-    // RECEIVE MESSAGE
-    // -----------------------------------
 
     const onReceiveMessage = (data) => {
       const text =
         typeof data === "string"
           ? data
-          : data?.message || data?.text || "";
+          : data?.message ||
+            data?.text ||
+            "";
 
       if (!text) {
         return;
@@ -104,82 +171,84 @@ function App() {
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now() + Math.random(),
+          id:
+            Date.now() +
+            Math.random(),
           text: text,
           sender: "stranger",
         },
       ]);
     };
 
-    // -----------------------------------
-    // STRANGER TYPING
-    // -----------------------------------
-
     const onStrangerTyping = () => {
       setIsTyping(true);
     };
-
-    // -----------------------------------
-    // STRANGER STOP TYPING
-    // -----------------------------------
 
     const onStrangerStopTyping = () => {
       setIsTyping(false);
     };
 
-    // -----------------------------------
-    // STRANGER DISCONNECTED
-    // -----------------------------------
-
     const onStrangerDisconnected = () => {
-      console.log("Stranger has disconnected");
+      console.log(
+        "Stranger disconnected"
+      );
 
       setConnected(false);
+
       setIsTyping(false);
 
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now() + Math.random(),
-          text: "Stranger has disconnected.",
+          id:
+            Date.now() +
+            Math.random(),
+          text:
+            "Stranger has disconnected.",
           sender: "system",
         },
       ]);
 
-      // Same button becomes NEXT
       setSkipState("next");
     };
-
-    // -----------------------------------
-    // YOU DISCONNECTED
-    // -----------------------------------
 
     const onYouDisconnected = () => {
-      console.log("You have disconnected");
+      console.log(
+        "You disconnected"
+      );
 
       setConnected(false);
+
       setIsTyping(false);
 
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now() + Math.random(),
-          text: "You have disconnected.",
+          id:
+            Date.now() +
+            Math.random(),
+          text:
+            "You have disconnected.",
           sender: "system",
         },
       ]);
 
-      // Same button becomes NEXT
       setSkipState("next");
     };
 
     // =====================================
-    // REGISTER SOCKET EVENTS
+    // REGISTER EVENTS
     // =====================================
 
-    socket.on("connect", onConnect);
+    socket.on(
+      "connect",
+      onConnect
+    );
 
-    socket.on("disconnect", onDisconnect);
+    socket.on(
+      "disconnect",
+      onDisconnect
+    );
 
     socket.on(
       "online_users",
@@ -226,7 +295,10 @@ function App() {
     // =====================================
 
     return () => {
-      socket.off("connect", onConnect);
+      socket.off(
+        "connect",
+        onConnect
+      );
 
       socket.off(
         "disconnect",
@@ -276,22 +348,34 @@ function App() {
   }, []);
 
   // =====================================
-  // START / FIND STRANGER
+  // START CHAT
   // =====================================
 
   const startChat = () => {
-    console.log("Finding stranger...");
+    // Don't start without internet
+    if (!isOnline) {
+      return;
+    }
+
+    console.log(
+      "Finding stranger..."
+    );
 
     setMessages([]);
+
     setMessage("");
+
     setIsTyping(false);
+
     setConnected(false);
+
     setSkipState("skip");
 
     setScreen("search");
 
-    // EXACT SERVER EVENT
-    socket.emit("find_stranger");
+    socket.emit(
+      "find_stranger"
+    );
   };
 
   // =====================================
@@ -299,7 +383,8 @@ function App() {
   // =====================================
 
   const sendMessage = () => {
-    const text = message.trim();
+    const text =
+      message.trim();
 
     if (!text) {
       return;
@@ -309,19 +394,21 @@ function App() {
       return;
     }
 
-    console.log("Sending message:", text);
+    if (!isOnline) {
+      return;
+    }
 
-    // Send to stranger
     socket.emit(
       "send_message",
       text
     );
 
-    // Show own message
     setMessages((prev) => [
       ...prev,
       {
-        id: Date.now() + Math.random(),
+        id:
+          Date.now() +
+          Math.random(),
         text: text,
         sender: "me",
       },
@@ -339,7 +426,8 @@ function App() {
   // =====================================
 
   const handleTyping = (e) => {
-    const value = e.target.value;
+    const value =
+      e.target.value;
 
     setMessage(value);
 
@@ -347,10 +435,18 @@ function App() {
       return;
     }
 
+    if (!isOnline) {
+      return;
+    }
+
     if (value.length > 0) {
-      socket.emit("typing");
+      socket.emit(
+        "typing"
+      );
     } else {
-      socket.emit("stop_typing");
+      socket.emit(
+        "stop_typing"
+      );
     }
 
     clearTimeout(
@@ -366,28 +462,27 @@ function App() {
   };
 
   // =====================================
-  // SKIP / SURE / NEXT
+  // SKIP
   // =====================================
 
   const handleSkip = () => {
-    // -----------------------------------
-    // SKIP
-    // -----------------------------------
-
-    if (skipState === "skip") {
-      setSkipState("confirm");
+    if (!isOnline) {
       return;
     }
 
-    // -----------------------------------
-    // SURE?
-    // -----------------------------------
-
-    if (skipState === "confirm") {
-      console.log(
-        "Skipping current stranger..."
+    if (
+      skipState === "skip"
+    ) {
+      setSkipState(
+        "confirm"
       );
 
+      return;
+    }
+
+    if (
+      skipState === "confirm"
+    ) {
       socket.emit(
         "next_stranger"
       );
@@ -395,47 +490,50 @@ function App() {
       return;
     }
 
-    // -----------------------------------
-    // NEXT
-    // -----------------------------------
-
-    if (skipState === "next") {
-      console.log(
-        "Finding next stranger..."
-      );
-
+    if (
+      skipState === "next"
+    ) {
       startChat();
     }
   };
 
   // =====================================
-  // BACK TO HOME
+  // BACK HOME
   // =====================================
 
-  const handleBackToHome = () => {
-    socket.emit(
-      "stop_search"
-    );
+  const handleBackToHome =
+    () => {
+      socket.emit(
+        "stop_search"
+      );
 
-    setMessages([]);
-    setMessage("");
-    setIsTyping(false);
-    setConnected(false);
-    setSkipState("skip");
+      setMessages([]);
 
-    setScreen("home");
-  };
+      setMessage("");
+
+      setIsTyping(false);
+
+      setConnected(false);
+
+      setSkipState("skip");
+
+      setScreen("home");
+    };
 
   // =====================================
   // BUTTON TEXT
   // =====================================
 
   const getSkipText = () => {
-    if (skipState === "confirm") {
+    if (
+      skipState === "confirm"
+    ) {
       return "Sure?";
     }
 
-    if (skipState === "next") {
+    if (
+      skipState === "next"
+    ) {
       return "Next";
     }
 
@@ -449,7 +547,58 @@ function App() {
   return (
     <div className="app">
 
-      {/* BACKGROUND */}
+      {/* =================================
+          INTERNET WARNING
+      ================================= */}
+
+      {!isOnline && (
+        <div className="internet-warning">
+
+          <div className="internet-warning-icon">
+            !
+          </div>
+
+          <div>
+            <strong>
+              No Internet Connection
+            </strong>
+
+            <span>
+              Please check your internet connection.
+            </span>
+          </div>
+
+        </div>
+      )}
+
+      {/* =================================
+          BACK ONLINE
+      ================================= */}
+
+      {isOnline &&
+        showBackOnline && (
+          <div className="internet-success">
+
+            <div className="internet-success-icon">
+              ✓
+            </div>
+
+            <div>
+              <strong>
+                Back Online
+              </strong>
+
+              <span>
+                Your internet connection is restored.
+              </span>
+            </div>
+
+          </div>
+        )}
+
+      {/* =================================
+          BACKGROUND
+      ================================= */}
 
       <div className="background-glow glow-one"></div>
 
@@ -508,7 +657,7 @@ function App() {
 
 
         {/* =================================
-            HOME SCREEN
+            HOME
         ================================= */}
 
         {screen === "home" && (
@@ -519,11 +668,9 @@ function App() {
               👋
             </div>
 
-
             <div className="eyebrow">
               VBIT COMMUNITY
             </div>
-
 
             <h2>
 
@@ -536,14 +683,11 @@ function App() {
 
             </h2>
 
-
             <p>
               Start a random conversation
               with someone from your college.
             </p>
 
-
-            {/* FIND SOMEONE NEW */}
 
             <div className="find-new-card">
 
@@ -588,11 +732,10 @@ function App() {
             </div>
 
 
-            {/* START BUTTON */}
-
             <button
               className="primary-btn"
               onClick={startChat}
+              disabled={!isOnline}
             >
 
               <span>
@@ -611,7 +754,7 @@ function App() {
 
 
         {/* =================================
-            SEARCH SCREEN
+            SEARCH
         ================================= */}
 
         {screen === "search" && (
@@ -642,10 +785,8 @@ function App() {
 
 
             <p>
-
               Looking for someone from
               the VBIT community to chat with.
-
             </p>
 
 
@@ -660,7 +801,9 @@ function App() {
 
             <button
               className="cancel-btn-modern"
-              onClick={handleBackToHome}
+              onClick={
+                handleBackToHome
+              }
             >
               Cancel
             </button>
@@ -671,14 +814,12 @@ function App() {
 
 
         {/* =================================
-            CHAT SCREEN
+            CHAT
         ================================= */}
 
         {screen === "chat" && (
 
           <section className="chat-screen">
-
-            {/* STRANGER HEADER */}
 
             <div className="stranger-header">
 
@@ -694,7 +835,6 @@ function App() {
                   <h3>
                     Stranger
                   </h3>
-
 
                   <span>
 
@@ -719,8 +859,6 @@ function App() {
 
             <div className="messages">
 
-              {/* EMPTY CHAT */}
-
               {messages.length === 0 &&
                 connected && (
 
@@ -738,23 +876,63 @@ function App() {
                 )}
 
 
-              {/* MESSAGE LIST */}
+              {messages.map(
+                (item) => {
 
-              {messages.map((item) => {
+                  if (
+                    item.sender ===
+                    "system"
+                  ) {
 
-                // SYSTEM MESSAGE
-                if (
-                  item.sender === "system"
-                ) {
+                    return (
+
+                      <div
+                        key={item.id}
+                        className="system-row"
+                      >
+
+                        <div className="system-message">
+
+                          {item.text}
+
+                        </div>
+
+                      </div>
+
+                    );
+                  }
+
 
                   return (
 
                     <div
                       key={item.id}
-                      className="system-row"
+                      className={`message-row ${
+                        item.sender ===
+                        "me"
+                          ? "mine"
+                          : "theirs"
+                      }`}
                     >
 
-                      <div className="system-message">
+                      {item.sender ===
+                        "stranger" && (
+
+                        <span className="stranger-label">
+                          Stranger
+                        </span>
+
+                      )}
+
+
+                      <div
+                        className={`message ${
+                          item.sender ===
+                          "me"
+                            ? "my-message"
+                            : "stranger-message"
+                        }`}
+                      >
 
                         {item.text}
 
@@ -765,58 +943,16 @@ function App() {
                   );
 
                 }
-
-
-                // NORMAL MESSAGE
-
-                return (
-
-                  <div
-                    key={item.id}
-                    className={`message-row ${
-                      item.sender === "me"
-                        ? "mine"
-                        : "theirs"
-                    }`}
-                  >
-
-                    {/* STRANGER LABEL */}
-
-                    {item.sender ===
-                      "stranger" && (
-
-                      <span className="stranger-label">
-                        Stranger
-                      </span>
-
-                    )}
-
-
-                    <div
-                      className={`message ${
-                        item.sender === "me"
-                          ? "my-message"
-                          : "stranger-message"
-                      }`}
-                    >
-
-                      {item.text}
-
-                    </div>
-
-                  </div>
-
-                );
-
-              })}
+              )}
 
 
               {/* =================================
-                  TYPING INDICATOR
+                  TYPING
               ================================= */}
 
               {isTyping &&
-                connected && (
+                connected &&
+                isOnline && (
 
                   <div className="typing-row">
 
@@ -827,7 +963,6 @@ function App() {
                       <span></span>
 
                     </div>
-
 
                     <span className="typing-text">
 
@@ -843,24 +978,27 @@ function App() {
 
 
             {/* =================================
-                BOTTOM MESSAGE AREA
+                MESSAGE INPUT
             ================================= */}
 
             <div className="bottom-area">
 
               <div className="input-wrapper">
 
-                {/* SKIP / SURE / NEXT */}
-
                 <button
                   className={`skip-btn ${
-                    skipState === "confirm"
+                    skipState ===
+                    "confirm"
                       ? "confirm"
-                      : skipState === "next"
+                      : skipState ===
+                        "next"
                       ? "next"
                       : ""
                   }`}
-                  onClick={handleSkip}
+                  onClick={
+                    handleSkip
+                  }
+                  disabled={!isOnline}
                 >
 
                   {getSkipText()}
@@ -868,11 +1006,10 @@ function App() {
                 </button>
 
 
-                {/* MESSAGE INPUT */}
-
                 <div
                   className={`message-input ${
-                    !connected
+                    !connected ||
+                    !isOnline
                       ? "disabled-input"
                       : ""
                   }`}
@@ -881,11 +1018,14 @@ function App() {
                   <input
                     type="text"
                     value={message}
-                    onChange={handleTyping}
+                    onChange={
+                      handleTyping
+                    }
                     onKeyDown={(e) => {
 
                       if (
-                        e.key === "Enter"
+                        e.key ===
+                        "Enter"
                       ) {
 
                         sendMessage();
@@ -894,21 +1034,27 @@ function App() {
 
                     }}
                     placeholder={
-                      connected
+                      !isOnline
+                        ? "No internet connection"
+                        : connected
                         ? "Type a message..."
                         : "Disconnected"
                     }
-                    disabled={!connected}
+                    disabled={
+                      !connected ||
+                      !isOnline
+                    }
                   />
 
 
-                  {/* SEND */}
-
                   <button
                     className="send-btn"
-                    onClick={sendMessage}
+                    onClick={
+                      sendMessage
+                    }
                     disabled={
                       !connected ||
+                      !isOnline ||
                       !message.trim()
                     }
                   >
