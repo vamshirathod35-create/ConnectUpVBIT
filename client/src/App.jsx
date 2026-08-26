@@ -3,10 +3,18 @@ import { io } from "socket.io-client";
 import "./App.css";
 import vbitLogo from "./assets/vbit-logo.png";
 
-const socket = io("http://localhost:5000", {
+// =====================================
+// CONNECT TO LIVE RENDER SERVER
+// =====================================
+
+const socket = io("https://connectupvbit-server.onrender.com", {
   autoConnect: true,
   reconnection: true,
 });
+
+// =====================================
+// APP
+// =====================================
 
 function App() {
   const [screen, setScreen] = useState("home");
@@ -24,41 +32,52 @@ function App() {
   // =====================================
 
   useEffect(() => {
+    // -----------------------------------
+    // CONNECT
+    // -----------------------------------
+
     const onConnect = () => {
-      console.log("Socket connected:", socket.id);
+      console.log("Connected to server:", socket.id);
     };
 
+    // -----------------------------------
+    // DISCONNECT
+    // -----------------------------------
+
     const onDisconnect = () => {
-      console.log("Socket disconnected");
+      console.log("Disconnected from server");
 
       setConnected(false);
       setIsTyping(false);
     };
+
+    // -----------------------------------
+    // ONLINE USERS
+    // -----------------------------------
 
     const onOnlineUsers = (count) => {
       setOnlineUsers(count);
     };
 
-    // -------------------------------
+    // -----------------------------------
     // WAITING
-    // -------------------------------
+    // -----------------------------------
 
     const onWaiting = () => {
       console.log("Waiting for stranger...");
 
       setScreen("search");
-      setMessages([]);
       setConnected(false);
       setIsTyping(false);
       setSkipState("skip");
     };
 
-    // -------------------------------
+    // -----------------------------------
     // MATCHED
-    // -------------------------------
+    // -----------------------------------
 
     const onMatched = () => {
-      console.log("Matched!");
+      console.log("Stranger matched!");
 
       setScreen("chat");
       setConnected(true);
@@ -68,9 +87,9 @@ function App() {
       setSkipState("skip");
     };
 
-    // -------------------------------
+    // -----------------------------------
     // RECEIVE MESSAGE
-    // -------------------------------
+    // -----------------------------------
 
     const onReceiveMessage = (data) => {
       const text =
@@ -78,40 +97,42 @@ function App() {
           ? data
           : data?.message || data?.text || "";
 
-      if (!text) return;
+      if (!text) {
+        return;
+      }
 
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + Math.random(),
-          text,
+          text: text,
           sender: "stranger",
         },
       ]);
     };
 
-    // -------------------------------
+    // -----------------------------------
     // STRANGER TYPING
-    // -------------------------------
+    // -----------------------------------
 
     const onStrangerTyping = () => {
       setIsTyping(true);
     };
 
-    // -------------------------------
+    // -----------------------------------
     // STRANGER STOP TYPING
-    // -------------------------------
+    // -----------------------------------
 
     const onStrangerStopTyping = () => {
       setIsTyping(false);
     };
 
-    // -------------------------------
+    // -----------------------------------
     // STRANGER DISCONNECTED
-    // -------------------------------
+    // -----------------------------------
 
     const onStrangerDisconnected = () => {
-      console.log("Stranger disconnected");
+      console.log("Stranger has disconnected");
 
       setConnected(false);
       setIsTyping(false);
@@ -125,13 +146,13 @@ function App() {
         },
       ]);
 
-      // Same button becomes Next
+      // Same button becomes NEXT
       setSkipState("next");
     };
 
-    // -------------------------------
+    // -----------------------------------
     // YOU DISCONNECTED
-    // -------------------------------
+    // -----------------------------------
 
     const onYouDisconnected = () => {
       console.log("You have disconnected");
@@ -148,23 +169,37 @@ function App() {
         },
       ]);
 
-      // Same button becomes Next
+      // Same button becomes NEXT
       setSkipState("next");
     };
 
-    // =================================
-    // REGISTER EVENTS
-    // =================================
+    // =====================================
+    // REGISTER SOCKET EVENTS
+    // =====================================
 
     socket.on("connect", onConnect);
+
     socket.on("disconnect", onDisconnect);
 
-    socket.on("online_users", onOnlineUsers);
+    socket.on(
+      "online_users",
+      onOnlineUsers
+    );
 
-    socket.on("waiting", onWaiting);
-    socket.on("matched", onMatched);
+    socket.on(
+      "waiting",
+      onWaiting
+    );
 
-    socket.on("receive_message", onReceiveMessage);
+    socket.on(
+      "matched",
+      onMatched
+    );
+
+    socket.on(
+      "receive_message",
+      onReceiveMessage
+    );
 
     socket.on(
       "stranger_typing",
@@ -186,21 +221,32 @@ function App() {
       onYouDisconnected
     );
 
-    // =================================
+    // =====================================
     // CLEANUP
-    // =================================
+    // =====================================
 
     return () => {
       socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
+
+      socket.off(
+        "disconnect",
+        onDisconnect
+      );
 
       socket.off(
         "online_users",
         onOnlineUsers
       );
 
-      socket.off("waiting", onWaiting);
-      socket.off("matched", onMatched);
+      socket.off(
+        "waiting",
+        onWaiting
+      );
+
+      socket.off(
+        "matched",
+        onMatched
+      );
 
       socket.off(
         "receive_message",
@@ -230,7 +276,7 @@ function App() {
   }, []);
 
   // =====================================
-  // START CHAT
+  // START / FIND STRANGER
   // =====================================
 
   const startChat = () => {
@@ -244,8 +290,7 @@ function App() {
 
     setScreen("search");
 
-    // IMPORTANT:
-    // Exact event name from server
+    // EXACT SERVER EVENT
     socket.emit("find_stranger");
   };
 
@@ -256,29 +301,37 @@ function App() {
   const sendMessage = () => {
     const text = message.trim();
 
-    if (!text || !connected) {
+    if (!text) {
       return;
     }
 
-    console.log("Sending:", text);
+    if (!connected) {
+      return;
+    }
 
-    // IMPORTANT:
-    // Exact event name from server
-    socket.emit("send_message", text);
+    console.log("Sending message:", text);
 
-    // Show our own message
+    // Send to stranger
+    socket.emit(
+      "send_message",
+      text
+    );
+
+    // Show own message
     setMessages((prev) => [
       ...prev,
       {
         id: Date.now() + Math.random(),
-        text,
+        text: text,
         sender: "me",
       },
     ]);
 
     setMessage("");
 
-    socket.emit("stop_typing");
+    socket.emit(
+      "stop_typing"
+    );
   };
 
   // =====================================
@@ -300,11 +353,16 @@ function App() {
       socket.emit("stop_typing");
     }
 
-    clearTimeout(typingTimeout.current);
+    clearTimeout(
+      typingTimeout.current
+    );
 
-    typingTimeout.current = setTimeout(() => {
-      socket.emit("stop_typing");
-    }, 900);
+    typingTimeout.current =
+      setTimeout(() => {
+        socket.emit(
+          "stop_typing"
+        );
+      }, 900);
   };
 
   // =====================================
@@ -312,46 +370,52 @@ function App() {
   // =====================================
 
   const handleSkip = () => {
-    // -------------------------------
+    // -----------------------------------
     // SKIP
-    // -------------------------------
+    // -----------------------------------
 
     if (skipState === "skip") {
       setSkipState("confirm");
       return;
     }
 
-    // -------------------------------
+    // -----------------------------------
     // SURE?
-    // -------------------------------
+    // -----------------------------------
 
     if (skipState === "confirm") {
-      console.log("Skipping stranger...");
+      console.log(
+        "Skipping current stranger..."
+      );
 
-      // IMPORTANT:
-      // Exact server event
-      socket.emit("next_stranger");
+      socket.emit(
+        "next_stranger"
+      );
 
       return;
     }
 
-    // -------------------------------
+    // -----------------------------------
     // NEXT
-    // -------------------------------
+    // -----------------------------------
 
     if (skipState === "next") {
-      console.log("Finding next stranger...");
+      console.log(
+        "Finding next stranger..."
+      );
 
       startChat();
     }
   };
 
   // =====================================
-  // BACK / HOME
+  // BACK TO HOME
   // =====================================
 
   const handleBackToHome = () => {
-    socket.emit("stop_search");
+    socket.emit(
+      "stop_search"
+    );
 
     setMessages([]);
     setMessage("");
@@ -384,8 +448,13 @@ function App() {
 
   return (
     <div className="app">
+
+      {/* BACKGROUND */}
+
       <div className="background-glow glow-one"></div>
+
       <div className="background-glow glow-two"></div>
+
 
       <main className="chat-container">
 
@@ -394,25 +463,35 @@ function App() {
         ================================= */}
 
         <header className="app-header">
+
           <div className="brand">
 
             <div className="brand-icon">
+
               <img
                 src={vbitLogo}
                 alt="VBIT Logo"
               />
+
             </div>
 
             <div>
-              <h1>ConnectUpVBIT</h1>
+
+              <h1>
+                ConnectUpVBIT
+              </h1>
+
               <span>
                 Stranger conversations
               </span>
+
             </div>
 
           </div>
 
+
           <div className="online-pill">
+
             <span className="online-dot"></span>
 
             <strong>
@@ -422,42 +501,56 @@ function App() {
             <span>
               online
             </span>
+
           </div>
+
         </header>
 
 
         {/* =================================
-            HOME
+            HOME SCREEN
         ================================= */}
 
         {screen === "home" && (
+
           <section className="welcome-screen">
 
             <div className="welcome-icon">
               👋
             </div>
 
+
             <div className="eyebrow">
               VBIT COMMUNITY
             </div>
 
+
             <h2>
+
               Find someone
               <br />
-              <span>new.</span>
+
+              <span>
+                new.
+              </span>
+
             </h2>
 
+
             <p>
-              Start a random conversation with
-              someone from your college.
+              Start a random conversation
+              with someone from your college.
             </p>
 
+
+            {/* FIND SOMEONE NEW */}
 
             <div className="find-new-card">
 
               <div className="find-new-content">
 
                 <div className="find-new-text">
+
                   <h3>
                     Find someone new
                   </h3>
@@ -466,10 +559,12 @@ function App() {
                     Meet a stranger and start
                     talking in seconds.
                   </p>
+
                 </div>
 
 
                 <div className="avatar-stack">
+
                   <div className="mini-avatar">
                     A
                   </div>
@@ -485,6 +580,7 @@ function App() {
                   <div className="mini-avatar">
                     +
                   </div>
+
                 </div>
 
               </div>
@@ -492,10 +588,13 @@ function App() {
             </div>
 
 
+            {/* START BUTTON */}
+
             <button
               className="primary-btn"
               onClick={startChat}
             >
+
               <span>
                 Start
               </span>
@@ -503,17 +602,20 @@ function App() {
               <span className="btn-arrow">
                 →
               </span>
+
             </button>
 
           </section>
+
         )}
 
 
         {/* =================================
-            SEARCH
+            SEARCH SCREEN
         ================================= */}
 
         {screen === "search" && (
+
           <section className="search-screen">
 
             <div className="search-animation">
@@ -528,22 +630,31 @@ function App() {
 
 
             <h2>
+
               Finding someone
               <br />
-              <span>new...</span>
+
+              <span>
+                new...
+              </span>
+
             </h2>
 
 
             <p>
-              Looking for someone from the
-              VBIT community to chat with.
+
+              Looking for someone from
+              the VBIT community to chat with.
+
             </p>
 
 
             <div className="search-status">
+
               <span></span>
 
               Searching for a stranger
+
             </div>
 
 
@@ -555,14 +666,16 @@ function App() {
             </button>
 
           </section>
+
         )}
 
 
         {/* =================================
-            CHAT
+            CHAT SCREEN
         ================================= */}
 
         {screen === "chat" && (
+
           <section className="chat-screen">
 
             {/* STRANGER HEADER */}
@@ -575,18 +688,22 @@ function App() {
                   Stranger
                 </div>
 
+
                 <div>
 
                   <h3>
                     Stranger
                   </h3>
 
+
                   <span>
+
                     <i></i>
 
                     {connected
                       ? "Online"
                       : "Disconnected"}
+
                   </span>
 
                 </div>
@@ -602,8 +719,11 @@ function App() {
 
             <div className="messages">
 
+              {/* EMPTY CHAT */}
+
               {messages.length === 0 &&
                 connected && (
+
                   <div className="system-intro">
 
                     You are connected
@@ -614,8 +734,11 @@ function App() {
                     Say hello 👋
 
                   </div>
+
                 )}
 
+
+              {/* MESSAGE LIST */}
 
               {messages.map((item) => {
 
@@ -623,21 +746,31 @@ function App() {
                 if (
                   item.sender === "system"
                 ) {
+
                   return (
+
                     <div
                       key={item.id}
                       className="system-row"
                     >
+
                       <div className="system-message">
+
                         {item.text}
+
                       </div>
+
                     </div>
+
                   );
+
                 }
 
 
                 // NORMAL MESSAGE
+
                 return (
+
                   <div
                     key={item.id}
                     className={`message-row ${
@@ -647,11 +780,15 @@ function App() {
                     }`}
                   >
 
+                    {/* STRANGER LABEL */}
+
                     {item.sender ===
                       "stranger" && (
+
                       <span className="stranger-label">
                         Stranger
                       </span>
+
                     )}
 
 
@@ -662,38 +799,51 @@ function App() {
                           : "stranger-message"
                       }`}
                     >
+
                       {item.text}
+
                     </div>
 
                   </div>
+
                 );
+
               })}
 
 
-              {/* TYPING */}
+              {/* =================================
+                  TYPING INDICATOR
+              ================================= */}
 
               {isTyping &&
                 connected && (
+
                   <div className="typing-row">
 
                     <div className="typing-bubble">
+
                       <span></span>
                       <span></span>
                       <span></span>
+
                     </div>
 
+
                     <span className="typing-text">
+
                       Stranger is typing...
+
                     </span>
 
                   </div>
+
                 )}
 
             </div>
 
 
             {/* =================================
-                MESSAGE BAR
+                BOTTOM MESSAGE AREA
             ================================= */}
 
             <div className="bottom-area">
@@ -712,11 +862,13 @@ function App() {
                   }`}
                   onClick={handleSkip}
                 >
+
                   {getSkipText()}
+
                 </button>
 
 
-                {/* INPUT */}
+                {/* MESSAGE INPUT */}
 
                 <div
                   className={`message-input ${
@@ -731,11 +883,15 @@ function App() {
                     value={message}
                     onChange={handleTyping}
                     onKeyDown={(e) => {
+
                       if (
                         e.key === "Enter"
                       ) {
+
                         sendMessage();
+
                       }
+
                     }}
                     placeholder={
                       connected
@@ -746,6 +902,8 @@ function App() {
                   />
 
 
+                  {/* SEND */}
+
                   <button
                     className="send-btn"
                     onClick={sendMessage}
@@ -754,7 +912,9 @@ function App() {
                       !message.trim()
                     }
                   >
+
                     ↑
+
                   </button>
 
                 </div>
@@ -764,9 +924,11 @@ function App() {
             </div>
 
           </section>
+
         )}
 
       </main>
+
     </div>
   );
 }
