@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import "./App.css";
 import vbitLogo from "./assets/vbit-logo.png";
+import interfaceImage from "./assets/interface.png";
 
 // =====================================
 // LIVE BACKEND
@@ -19,8 +20,28 @@ const socket = io(
 // APP
 // =====================================
 
+const getInfoPageFromUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  const page = params.get("page");
+
+  const validPages = [
+    "about",
+    "how",
+    "safety",
+    "privacy",
+    "terms",
+    "contact",
+  ];
+
+  return validPages.includes(page) ? page : null;
+};
+
 function App() {
-  const [screen, setScreen] = useState("home");
+  const initialInfoPage = getInfoPageFromUrl();
+
+  const [screen, setScreen] = useState(
+    initialInfoPage ? "info" : "home"
+  );
 
   const [messages, setMessages] = useState([]);
 
@@ -33,6 +54,259 @@ function App() {
   const [connected, setConnected] = useState(false);
 
   const [skipState, setSkipState] = useState("skip");
+
+  // =====================================
+  // PUBLIC INFORMATION PAGES
+  // =====================================
+
+  const [infoPage, setInfoPage] = useState(initialInfoPage);
+
+  const openInfoPage = (page) => {
+    setInfoPage(page);
+    setScreen("info");
+
+    window.history.pushState(
+      {},
+      "",
+      `/?page=${encodeURIComponent(page)}`
+    );
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goHome = () => {
+    setInfoPage(null);
+    setScreen("home");
+
+    window.history.pushState({}, "", "/");
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const page = getInfoPageFromUrl();
+
+      setInfoPage(page);
+      setScreen(page ? "info" : "home");
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  const infoPages = {
+    about: {
+      title: "About ConnectUpVBIT",
+      subtitle: "A simple way to meet and talk to someone new.",
+      sections: [
+        {
+          heading: "What is ConnectUpVBIT?",
+          text:
+            "ConnectUpVBIT is a random conversation platform created for the VBIT community. It helps students discover a stranger from the community and start a real-time conversation."
+        },
+        {
+          heading: "Our goal",
+          text:
+            "The goal is to make meeting new people simple, friendly, and easy. You can start with text conversations and, where available, use audio or video calling."
+        },
+        {
+          heading: "How conversations work",
+          text:
+            "When you choose to find someone, ConnectUpVBIT looks for another available user. Once two compatible users are matched, they can communicate in real time."
+        },
+        {
+          heading: "Your conversations",
+          text:
+            "Chat messages are relayed in real time and ConnectUpVBIT is not designed to maintain a permanent chat database. Technical infrastructure may still process normal connection or service information needed to operate the website."
+        }
+      ]
+    },
+
+    how: {
+      title: "How It Works",
+      subtitle: "Start a conversation in a few simple steps.",
+      sections: [
+        {
+          heading: "1. Start",
+          text:
+            "Click Start on the home screen when you are ready to meet someone."
+        },
+        {
+          heading: "2. Choose a mode",
+          text:
+            "Choose the communication mode available to you, such as Text, Audio, or Video."
+        },
+        {
+          heading: "3. Search",
+          text:
+            "ConnectUpVBIT searches for another available user who selected a compatible mode."
+        },
+        {
+          heading: "4. Connect",
+          text:
+            "When a match is found, the conversation starts. In text mode you can send messages. In audio or video mode, your browser can establish a peer-to-peer WebRTC call."
+        },
+        {
+          heading: "5. Meet someone new",
+          text:
+            "If you do not want to continue the current conversation, use the Skip control and confirm when asked. You can then move on to the next stranger."
+        }
+      ]
+    },
+
+    safety: {
+      title: "Safety & Community Guidelines",
+      subtitle: "Keep conversations respectful and safe.",
+      sections: [
+        {
+          heading: "Be respectful",
+          text:
+            "Treat other users with respect. Do not harass, threaten, bully, discriminate against, or deliberately disturb another person."
+        },
+        {
+          heading: "Protect personal information",
+          text:
+            "Do not share passwords, financial information, private documents, precise personal details, or other sensitive information with strangers."
+        },
+        {
+          heading: "Use the platform responsibly",
+          text:
+            "Do not use ConnectUpVBIT for illegal activity, scams, impersonation, harmful activity, or content intended to seriously harm or exploit another person."
+        },
+        {
+          heading: "Use Skip when needed",
+          text:
+            "You never have to continue a conversation that makes you uncomfortable. Use Skip to leave the current stranger and search for another."
+        },
+        {
+          heading: "Serious safety concerns",
+          text:
+            "If a conversation involves an immediate threat or serious illegal activity, stop interacting and contact the appropriate local authorities or emergency services when necessary."
+        }
+      ]
+    },
+
+    privacy: {
+      title: "Privacy Policy",
+      subtitle: "A clear explanation of how ConnectUpVBIT handles information.",
+      sections: [
+        {
+          heading: "Information used to operate the service",
+          text:
+            "ConnectUpVBIT may process information required to establish connections, match users, maintain the website, prevent abuse, and provide the requested communication features."
+        },
+        {
+          heading: "Chat messages",
+          text:
+            "Chat messages are relayed in real time between matched users. ConnectUpVBIT is not designed to store conversations permanently in a chat database."
+        },
+        {
+          heading: "Audio and video calls",
+          text:
+            "Audio and video communication uses browser WebRTC technology. Depending on the connection path, normal networking information such as IP addresses may be processed by internet, hosting, or communication infrastructure."
+        },
+        {
+          heading: "Cookies, analytics and advertising",
+          text:
+            "If analytics, advertising, or similar third-party services are introduced, those services may process information according to their own policies. Any future advertising or analytics implementation should be configured in accordance with applicable privacy and platform requirements."
+        },
+        {
+          heading: "Third-party infrastructure",
+          text:
+            "The service may rely on third-party hosting, networking, or software services to deliver the website. Those providers can process technical information as necessary to provide their services."
+        },
+        {
+          heading: "Changes to this policy",
+          text:
+            "This Privacy Policy may be updated as ConnectUpVBIT develops. The latest version published on this website will apply to future use of the service."
+        }
+      ]
+    },
+
+    terms: {
+      title: "Terms of Service",
+      subtitle: "The basic rules for using ConnectUpVBIT.",
+      sections: [
+        {
+          heading: "Acceptable use",
+          text:
+            "You agree to use ConnectUpVBIT lawfully and responsibly. You must not use the service to harass, threaten, scam, impersonate, exploit, or harm other people."
+        },
+        {
+          heading: "User responsibility",
+          text:
+            "You are responsible for what you say, share, and do while using the platform. Do not share sensitive personal information with strangers."
+        },
+        {
+          heading: "Service availability",
+          text:
+            "ConnectUpVBIT is provided on an availability basis. Connections can fail because of internet problems, browser restrictions, server issues, or other technical conditions."
+        },
+        {
+          heading: "No identity guarantee",
+          text:
+            "Random matching does not guarantee that another user is who they claim to be. Use appropriate caution when interacting with strangers."
+        },
+        {
+          heading: "Access and termination",
+          text:
+            "Access to the service may be limited or terminated when necessary to protect the platform, users, or the service from misuse."
+        },
+        {
+          heading: "Updates",
+          text:
+            "These terms may change as the service evolves. Continued use of ConnectUpVBIT after an update means you accept the updated terms."
+        }
+      ]
+    },
+
+    contact: {
+      title: "Contact Us",
+      subtitle: "Questions, feedback, safety concerns, or partnership enquiries.",
+      sections: [
+        {
+          heading: "General support",
+          text:
+            "For questions or feedback about ConnectUpVBIT, please use the support contact below."
+        },
+        {
+          heading: "Email",
+          text: (
+            <>
+              For inquiries, please contact us at{" "}
+              <a
+                href="mailto:connectupvbit@gmail.com"
+                style={{
+                  color: "#e94b91",
+                  fontWeight: 700,
+                  textDecoration: "none"
+                }}
+              >
+                connectupvbit@gmail.com
+              </a>
+            </>
+          )
+        },
+        {
+          heading: "Safety concerns",
+          text:
+            "If you experience serious harassment, threats, or another urgent safety issue, stop the conversation and contact the appropriate local authorities or emergency services when necessary."
+        },
+        {
+          heading: "Business and promotions",
+          text:
+            "For advertising, partnership, or other business enquiries, use the official contact channel provided by the project owner."
+        }
+      ]
+    }
+  };
+
 
   // =====================================
   // INTERNET STATUS
@@ -545,7 +819,12 @@ function App() {
   // =====================================
 
   return (
-    <div className="app">
+    <div className={`app ${screen === "search" ? "search-transition-active" : ""}`}>
+      {screen === "search" && (
+        <div className="search-pink-transition" aria-hidden="true">
+          <div className="search-pink-transition-orb">✦</div>
+        </div>
+      )}
 
       {/* =================================
           INTERNET WARNING
@@ -634,6 +913,12 @@ function App() {
                 Stranger conversations
               </span>
 
+              <div className="header-decoration" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+
             </div>
 
           </div>
@@ -662,14 +947,65 @@ function App() {
 
         {screen === "home" && (
 
-          <section className="welcome-screen">
+          <section className="welcome-screen" style={{ position: "relative", overflow: "visible" }}>
 
-            <div className="welcome-icon">
-              👋
+            <div
+              className="home-reference-decor home-reference-left"
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: "4%",
+                top: "560px",
+                zIndex: 50,
+                display: "flex",
+                flexDirection: "column",
+                color: "#ef78ab",
+                fontSize: "16px",
+                lineHeight: "1.18",
+                fontWeight: 600,
+                fontStyle: "italic",
+                textAlign: "left",
+                transform: "rotate(-7deg)",
+                pointerEvents: "none",
+              }}
+            >
+              <span>Different</span>
+              <span>People</span>
+              <span>Same Campus</span>
+              <b style={{ fontSize: "25px", marginTop: "8px", fontWeight: 400 }}>♡</b>
             </div>
 
-            <div className="eyebrow">
-              VBIT COMMUNITY
+            <div
+              className="home-reference-decor home-reference-right"
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                right: "4%",
+                top: "520px",
+                zIndex: 50,
+                display: "flex",
+                flexDirection: "column",
+                color: "#ef78ab",
+                fontSize: "16px",
+                lineHeight: "1.18",
+                fontWeight: 600,
+                fontStyle: "italic",
+                textAlign: "left",
+                transform: "rotate(6deg)",
+                pointerEvents: "none",
+              }}
+            >
+              <span>Good</span>
+              <span>Conversations</span>
+              <span>Brighter Days</span>
+              <b style={{ fontSize: "25px", marginTop: "8px", fontWeight: 400 }}>♡</b>
+            </div>
+
+            <div className="home-connection-illustration">
+              <img
+                src={interfaceImage}
+                alt="Students connecting through conversation"
+              />
             </div>
 
             <h2>
@@ -759,7 +1095,7 @@ function App() {
 
         {screen === "search" && (
 
-          <section className="search-screen">
+          <section className="search-screen start-transition">
 
             <div className="search-animation">
 
@@ -1071,6 +1407,132 @@ function App() {
 
           </section>
 
+        )}
+
+        {/* =================================
+            PUBLIC INFORMATION PAGES
+        ================================= */}
+
+        {screen === "info" && infoPage && (
+          <section className="info-page">
+            <div className="info-header">
+              <div className="info-brand">
+                <div className="info-brand-logo">
+                  <img src={vbitLogo} alt="VBIT Logo" />
+                </div>
+
+                <div className="info-brand-text">
+                  <strong>ConnectUpVBIT</strong>
+                  <span
+                    className="info-community-text"
+                    style={{
+                      display: "block",
+                      marginTop: "6px",
+                      color: "#e94b91",
+                      fontSize: "14px",
+                      fontWeight: 600
+                    }}
+                  >
+                    VBIT Community
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="info-content">
+              <div className="eyebrow">CONNECTUPVBIT</div>
+
+              <h2>{infoPages[infoPage].title}</h2>
+
+              <p className="info-subtitle">
+                {infoPages[infoPage].subtitle}
+              </p>
+
+              {infoPages[infoPage].sections.map((section, index) => (
+                <article className="info-section" key={index}>
+                  <h3>{section.heading}</h3>
+                  <p>{section.text}</p>
+                </article>
+              ))}
+
+              <button
+                className="primary-btn info-primary-button"
+                onClick={goHome}
+                type="button"
+              >
+                <span>Back Home</span>
+                <span className="btn-arrow">→</span>
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* =================================
+            PUBLIC SITE FOOTER
+        ================================= */}
+
+        {screen === "home" && (
+          <footer className="site-footer">
+            <a
+              href="/?page=about"
+              onClick={(e) => {
+                e.preventDefault();
+                openInfoPage("about");
+              }}
+            >
+              About
+            </a>
+
+            <a
+              href="/?page=how"
+              onClick={(e) => {
+                e.preventDefault();
+                openInfoPage("how");
+              }}
+            >
+              How It Works
+            </a>
+
+            <a
+              href="/?page=safety"
+              onClick={(e) => {
+                e.preventDefault();
+                openInfoPage("safety");
+              }}
+            >
+              Safety
+            </a>
+
+            <a
+              href="/?page=privacy"
+              onClick={(e) => {
+                e.preventDefault();
+                openInfoPage("privacy");
+              }}
+            >
+              Privacy
+            </a>
+
+            <a
+              href="/?page=terms"
+              onClick={(e) => {
+                e.preventDefault();
+                openInfoPage("terms");
+              }}
+            >
+              Terms
+            </a>
+
+            <a
+              href="/?page=contact"
+              onClick={(e) => {
+                e.preventDefault();
+                openInfoPage("contact");
+              }}
+            >
+              Contact
+            </a>
+          </footer>
         )}
 
       </main>
