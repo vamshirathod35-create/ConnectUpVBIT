@@ -322,6 +322,20 @@ function App() {
   const typingTimeout = useRef(null);
 
   // =====================================
+  // AUTO SCROLL CHAT
+  // =====================================
+
+  const messagesContainerRef = useRef(null);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+
+    if (!container) return;
+
+    container.scrollTop = container.scrollHeight;
+  }, [messages, isTyping]);
+
+  // =====================================
   // INTERNET CONNECTION CHECK
   // =====================================
 
@@ -1193,7 +1207,10 @@ function App() {
                 MESSAGES
             ================================= */}
 
-            <div className="messages">
+            <div
+              className="messages"
+              ref={messagesContainerRef}
+            >
 
               {messages.length === 0 &&
                 connected && (
